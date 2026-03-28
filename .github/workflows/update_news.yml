@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install feedparser requests scikit-learn
+          pip install -r requirements.txt
 
       - name: Run update script
         env:
