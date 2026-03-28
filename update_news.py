@@ -12,38 +12,42 @@ from sklearn.metrics.pairwise import cosine_similarity
 import hashlib
 
 # ================= 配置区域 =================
+# 关键词列表（中英文）
 KEYWORDS = [
     '钢铁', '铁矿石', '钢材', '钢价', 'steel', 'iron ore',
     '焦炭', '钢坯', '圆钢', '方钢', '螺纹钢', '热卷', '冷轧卷',
     '钢管', '无缝管', '彩涂卷', '镀锌卷', '热轧', '钢板'
 ]
 
+# RSS 源列表（可自行增删）
 RSS_SOURCES = [
     'https://news.google.com/rss/search?q=钢铁&hl=zh-CN&gl=CN&ceid=CN:zh-Hans',
-    # 可添加更多 RSS 源
+    # 可添加其他 RSS 源，例如：
+    # 'https://www.mysteel.com/rss/news.xml',
+    # 'https://www.lgmi.com/rss/news.xml',
 ]
 
-NEWS_FILE = 'steel_news.json'          # 本地存储所有新闻
-HTML_TEMPLATE = 'template.html'        # 模板文件
-OUTPUT_FILES = {
-    'zh': 'steelnews.html',
-    'en': 'steelnews.en.html',
-    'fr': 'steelnews.fr.html',
-    'de': 'steelnews.de.html'
+# 本地存储文件（保留原始数据，用于去重）
+NEWS_FILE = 'steel_news.json'
+
+# 输出 JSON 文件名（多语言）
+OUTPUT_JSON = {
+    'zh': 'steel_news_zh.json',
+    'en': 'steel_news_en.json',
+    'fr': 'steel_news_fr.json',
+    'de': 'steel_news_de.json'
 }
 
+# 翻译开关
 TRANSLATION_ENABLED = True              # 是否启用翻译
-TRANSLATE_TO = ['en', 'fr', 'de']       # 目标语言
+TRANSLATE_TO = ['en', 'fr', 'de']       # 目标语言代码
 
-SIMILARITY_THRESHOLD = 0.5              # 去重阈值
+# 相似度去重阈值（0-1，越大越宽松）
+SIMILARITY_THRESHOLD = 0.5
 
-# HTTP 上传配置（从环境变量读取）
-UPLOAD_URL = os.environ.get('UPLOAD_URL', '')
-UPLOAD_TOKEN = os.environ.get('UPLOAD_TOKEN', '')
-
-# ================= 核心功能 =================
+# ================= 核心函数 =================
 def fetch_rss_feeds():
-    """从所有RSS源抓取新闻"""
+    """从所有 RSS 源抓取新闻"""
     all_news = []
     for url in RSS_SOURCES:
         try:
@@ -51,8 +55,9 @@ def fetch_rss_feeds():
             for entry in feed.entries:
                 title = entry.title
                 summary = entry.summary if 'summary' in entry else ''
-                # 检查关键词
+                # 检查是否包含关键词
                 if any(kw.lower() in (title + summary).lower() for kw in KEYWORDS):
+                    # 提取图片
                     img_match = re.search(r'<img.*?src="(.*?)"', summary)
                     image_url = img_match.group(1) if img_match else None
                     news = {
@@ -66,7 +71,7 @@ def fetch_rss_feeds():
                     }
                     all_news.append(news)
         except Exception as e:
-            print(f"抓取RSS源 {url} 失败: {e}")
+            print(f"抓取 RSS 源 {url} 失败: {e}")
     return all_news
 
 def deduplicate_news(news_list):
@@ -89,27 +94,32 @@ def deduplicate_news(news_list):
     return [news_list[i] for i in to_keep]
 
 def load_existing_news():
+    """加载已保存的新闻"""
     if os.path.exists(NEWS_FILE):
         with open(NEWS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     return []
 
 def save_news(news_list):
+    """保存新闻到 JSON 文件"""
     with open(NEWS_FILE, 'w', encoding='utf-8') as f:
         json.dump(news_list, f, ensure_ascii=False, indent=2)
 
 def merge_news(existing, new):
+    """合并新新闻，去重（基于 ID 和相似度）"""
     existing_ids = {n['id'] for n in existing}
     unique_new = [n for n in new if n['id'] not in existing_ids]
     if not unique_new:
         return existing
+    # 对新新闻进行相似度去重（避免同一次抓取内重复）
     unique_new = deduplicate_news(unique_new)
+    # 合并并按发布时间倒序（最新在前）
     all_news = unique_new + existing
     all_news.sort(key=lambda x: x['published'], reverse=True)
     return all_news
 
 def translate_text(text, target_lang):
-    """使用 MyMemory 免费翻译 API"""
+    """使用 MyMemory 免费翻译 API 翻译文本"""
     if not text or target_lang == 'zh':
         return text
     if len(text) > 500:
@@ -125,10 +135,12 @@ def translate_text(text, target_lang):
     return text
 
 def translate_news(news, target_lang):
+    """翻译单条新闻（标题和内容）"""
     if target_lang == 'zh':
         return news
     translated = news.copy()
     translated['title'] = translate_text(news['title'], target_lang)
+    # 翻译正文（简单剥离 HTML 标签）
     if news.get('content'):
         clean_content = re.sub('<[^<]+?>', '', news['content'])
         translated['content'] = translate_text(clean_content, target_lang)
@@ -136,105 +148,58 @@ def translate_news(news, target_lang):
         translated['content'] = ''
     return translated
 
-def generate_html(news_list, lang='zh'):
-    """生成HTML，使用模板文件"""
-    with open(HTML_TEMPLATE, 'r', encoding='utf-8') as f:
-        template = f.read()
-    
-    news_items = []
-    for news in news_list[:50]:  # 只显示最近50条
-        published = news.get('published', '')
-        try:
-            dt = datetime.strptime(published, '%a, %d %b %Y %H:%M:%S %Z')
-            date_str = dt.strftime('%Y-%m-%d %H:%M')
-        except:
-            date_str = published
-        
-        title = news['title']
-        link = news['link']
-        source = news.get('source', '未知')
-        content = news.get('content', '')[:300] + '...' if len(news.get('content', '')) > 300 else news.get('content', '')
-        
-        image_html = ''
-        if news.get('image'):
-            image_html = f'''
-            <div class="news-image">
-                <img src="{news['image']}" alt="新闻配图" loading="lazy">
-                <div class="news-image-caption">图片来源于 {source}</div>
-            </div>
-            '''
-        
-        item = f'''
-        <div class="news-item">
-            <div class="news-date">{date_str}</div>
-            <div class="news-title"><a href="{link}" target="_blank" rel="noopener noreferrer">{title}</a></div>
-            <div class="news-content">{content}</div>
-            {image_html}
-            <div class="news-source">来源：{source}</div>
-        </div>
-        <hr class="news-divider">
-        '''
-        news_items.append(item)
-    
-    html_content = template.replace('<!-- NEWS_LIST -->', '\n'.join(news_items))
-    
-    # 设置页面标题
-    title_map = {'zh': '钢材新闻', 'en': 'Steel News', 'fr': 'Actualités de l\'acier', 'de': 'Stahl Nachrichten'}
-    title_text = title_map.get(lang, 'Steel News')
-    html_content = re.sub(r'<title>.*?</title>', f'<title>{title_text} - 巨红贸易</title>', html_content)
-    return html_content
-
-def upload_via_http(local_path, remote_filename):
-    """通过 HTTP POST 上传文件内容到 PHP 脚本"""
-    if not UPLOAD_TOKEN or not UPLOAD_URL:
-        print("未设置 UPLOAD_TOKEN 或 UPLOAD_URL，跳过上传")
-        return
-    try:
-        with open(local_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        payload = {
-            'filename': remote_filename,
-            'content': content
+def generate_json(news_list, lang='zh'):
+    """生成指定语言的 JSON 内容"""
+    # 只保留最近 50 条，避免文件过大
+    limited = news_list[:50]
+    output = []
+    for news in limited:
+        item = {
+            'title': news['title'],
+            'link': news['link'],
+            'published': news['published'],
+            'source': news.get('source', '未知'),
+            'content': news.get('content', '')[:300] + '...' if len(news.get('content', '')) > 300 else news.get('content', ''),
+            'image': news.get('image')
         }
-        headers = {
-            'X-Upload-Token': UPLOAD_TOKEN,
-            'Content-Type': 'application/json'
-        }
-        response = requests.post(UPLOAD_URL, json=payload, headers=headers, timeout=30)
-        if response.status_code == 200:
-            print(f"已上传 {local_path} -> {remote_filename}")
-        else:
-            print(f"上传失败，HTTP {response.status_code}: {response.text}")
-    except Exception as e:
-        print(f"HTTP 上传异常: {e}")
+        output.append(item)
+    return json.dumps(output, ensure_ascii=False, indent=2)
 
+# ================= 主流程 =================
 def main():
     print(f"{datetime.now()} - 开始抓取新闻...")
+
+    # 1. 抓取新新闻
     new_news = fetch_rss_feeds()
     print(f"抓取到 {len(new_news)} 条新新闻")
-    
+
+    # 2. 加载已有新闻
     existing_news = load_existing_news()
+
+    # 3. 合并去重
     merged_news = merge_news(existing_news, new_news)
     print(f"合并后共 {len(merged_news)} 条新闻")
+
+    # 4. 保存主数据（用于下次去重）
     save_news(merged_news)
-    
-    # 生成中文版
-    zh_html = generate_html(merged_news, lang='zh')
-    with open(OUTPUT_FILES['zh'], 'w', encoding='utf-8') as f:
-        f.write(zh_html)
-    print(f"已生成中文版：{OUTPUT_FILES['zh']}")
-    upload_via_http(OUTPUT_FILES['zh'], OUTPUT_FILES['zh'])
-    
-    # 多语言
+
+    # 5. 生成中文版 JSON
+    zh_json = generate_json(merged_news, lang='zh')
+    with open(OUTPUT_JSON['zh'], 'w', encoding='utf-8') as f:
+        f.write(zh_json)
+    print(f"已生成中文版 JSON：{OUTPUT_JSON['zh']}")
+
+    # 6. 多语言翻译与生成
     if TRANSLATION_ENABLED:
         for lang in TRANSLATE_TO:
             print(f"正在翻译为 {lang}...")
             translated_news = [translate_news(n, lang) for n in merged_news]
-            lang_html = generate_html(translated_news, lang=lang)
-            with open(OUTPUT_FILES[lang], 'w', encoding='utf-8') as f:
-                f.write(lang_html)
-            print(f"已生成 {lang} 版：{OUTPUT_FILES[lang]}")
-            upload_via_http(OUTPUT_FILES[lang], OUTPUT_FILES[lang])
+            lang_json = generate_json(translated_news, lang=lang)
+            with open(OUTPUT_JSON[lang], 'w', encoding='utf-8') as f:
+                f.write(lang_json)
+            print(f"已生成 {lang} 版 JSON：{OUTPUT_JSON[lang]}")
+
+    print("所有任务完成！")
 
 if __name__ == '__main__':
     main()
