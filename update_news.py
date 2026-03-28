@@ -43,7 +43,7 @@ SIMILARITY_THRESHOLD = 0.5              # 去重阈值
 FTP_HOST = os.environ.get('FTP_HOST')
 FTP_USER = os.environ.get('FTP_USER')
 FTP_PASS = os.environ.get('FTP_PASS')
-REMOTE_DIR = '/'  # 远程目录，例如 '/public_html/'
+REMOTE_DIR = '/unionmetaladmin/wwwroot'  # 远程目录，例如 '/public_html/'
 
 # ================= 核心功能 =================
 def fetch_rss_feeds():
