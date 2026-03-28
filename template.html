@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钢材新闻 - 巨红贸易</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ================= 全局样式 ================= */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        
+        /* 导航栏 */
+        header {
+            position: sticky;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            color: white;
+        }
+        
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-left: 10px;
+            line-height: 1.2;
+        }
+        
+        .logo span {
+            display: block;
+            font-size: 14px;
+            font-weight: 300;
+            color: #e0e0e0;
+        }
+        
+        .logo-icon {
+            font-size: 32px;
+            color: #e53935;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            flex-wrap: wrap;
+        }
+        
+        nav ul li {
+            margin-left: 30px;
+        }
+        
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+        
+        nav ul li a:hover {
+            color: #e53935;
+        }
+        
+        /* 语言切换器 */
+        .language-switcher {
+            margin-left: 30px;
+        }
+        
+        .language-switcher select {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .language-switcher select option {
+            background: #333;
+            color: white;
+        }
+        
+        /* 页面内容区域 */
+        .page-content {
+            min-height: 60vh;
+            padding: 40px 0;
+        }
+        
+        /* 新闻列表样式 */
+        .news-list {
+            margin-top: 30px;
+        }
+        
+        .news-item {
+            background: white;
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .news-date {
+            color: #e53935;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        
+        .news-title {
+            font-size: 1.4rem;
+            margin: 0 0 10px;
+        }
+        
+        .news-title a {
+            color: #1a237e;
+            text-decoration: none;
+        }
+        
+        .news-title a:hover {
+            text-decoration: underline;
+        }
+        
+        .news-content {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .news-image {
+            max-width: 100%;
+            margin: 10px 0;
+        }
+        
+        .news-image img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        
+        .news-image-caption {
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 4px;
+        }
+        
+        .news-source {
+            color: #777;
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+        
+        .news-divider {
+            margin: 20px 0;
+            border: none;
+            border-top: 1px solid #eee;
+        }
+        
+        /* 页脚 */
+        footer {
+            background-color: #1a237e;
+            color: white;
+            padding: 60px 0 20px;
+            margin-top: 40px;
+        }
+        
+        .footer-content {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+        
+        .footer-column {
+            flex: 1;
+            min-width: 250px;
+            margin-bottom: 30px;
+        }
+        
+        .footer-column h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 10px;
+        }
+        
+        .footer-column ul li a {
+            color: #b0b0b0;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-column ul li a:hover {
+            color: #e53935;
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #b0b0b0;
+            font-size: 0.9rem;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 992px) {
+            nav ul li {
+                margin-left: 20px;
+            }
+            .language-switcher {
+                margin-left: 20px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            nav ul {
+                margin-top: 20px;
+                flex-wrap: wrap;
+            }
+            nav ul li {
+                margin: 5px 15px 5px 0;
+            }
+            .language-switcher {
+                margin: 10px 0 0 0;
+            }
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #e53935;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #c62828;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <header>
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-industry logo-icon"></i>
+                <div>
+                    <h1>巨红贸易(上海)有限公司</h1>
+                    <span>Shanghai Unionmetal Trading Co., Ltd.</span>
+                </div>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="/">首页</a></li>
+                    <li><a href="/#about">公司简介</a></li>
+                    <li><a href="/#products">产品中心</a></li>
+                    <li><a href="/#projects">项目案例</a></li>
+                    <li><a href="/steelnews.html">钢材新闻</a></li>
+                    <li><a href="/#contact">联系我们</a></li>
+                    <li class="language-switcher">
+                        <select id="languageSelect">
+                            <option value="zh">中文</option>
+                            <option value="en">English</option>
+                            <option value="fr">Français</option>
+                            <option value="de">Deutsch</option>
+                        </select>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 页面主要内容区 -->
+    <div class="page-content">
+        <div class="container">
+            <h1>钢材新闻</h1>
+            <p>最新钢铁行业动态，为您提供及时资讯。</p>
+            
+            <!-- 新闻列表占位符：Python脚本将替换此处 -->
+            <!-- NEWS_LIST -->
+            
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer id="contact">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3>巨红贸易(上海)有限公司</h3>
+                    <p>Shanghai Unionmetal Trading Co., Ltd.</p>
+                    <p style="margin-top: 15px; color: #b0b0b0;">成立于2008年，专业从事钢材出口，致力于为全球客户提供高品质的钢材产品和专业服务。</p>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>联系方式</h3>
+                    <ul>
+                        <li><i class="fas fa-map-marker-alt" style="margin-right: 10px;"></i> 上海市，中国</li>
+                        <li><i class="fas fa-phone" style="margin-right: 10px;"></i> +86 13817230877</li>
+                        <li><i class="fas fa-envelope" style="margin-right: 10px;"></i> sales@umtsh.com</li>
+                        <li><i class="fas fa-globe" style="margin-right: 10px;"></i> www.umtsh.com</li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>主要市场</h3>
+                    <ul>
+                        <li>尼日利亚</li>
+                        <li>伊拉克</li>
+                        <li>中东地区</li>
+                        <li>非洲地区</li>
+                        <li>东南亚地区</li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>快速链接</h3>
+                    <ul>
+                        <li><a href="/">首页</a></li>
+                        <li><a href="/#about">公司简介</a></li>
+                        <li><a href="/#products">产品中心</a></li>
+                        <li><a href="/#projects">项目案例</a></li>
+                        <li><a href="/steelnews.html">钢材新闻</a></li>
+                        <li><a href="/#contact">联系我们</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p>&copy; 2025 巨红贸易(上海)有限公司 - Shanghai Unionmetal Trading Co., Ltd. 保留所有权利</p>
+                <p style="margin-top: 10px;">专业钢材出口商 | 始于2008年 | 年出口量3万吨</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 语言切换 JavaScript (可选，用于实时切换，但你的网站可能已有此功能) -->
+    <script>
+        // 如果网站已有语言切换逻辑，可保留或覆盖
+        // 此处简单示例：切换时跳转到对应语言版本的新闻页
+        const langSelect = document.getElementById('languageSelect');
+        if (langSelect) {
+            langSelect.addEventListener('change', function(e) {
+                const lang = e.target.value;
+                let url = '/steelnews.html';
+                if (lang === 'en') url = '/steelnews.en.html';
+                else if (lang === 'fr') url = '/steelnews.fr.html';
+                else if (lang === 'de') url = '/steelnews.de.html';
+                window.location.href = url;
+            });
+        }
+    </script>
+</body>
+</html>
