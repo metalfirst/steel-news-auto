@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # 确保有推送权限
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -22,8 +24,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run update script
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASS: ${{ secrets.FTP_PASS }}
         run: python update_news.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add steel_news_*.json steel_news.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update steel news JSON"
+          git push
