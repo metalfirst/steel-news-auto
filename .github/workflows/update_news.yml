@@ -2,26 +2,28 @@ name: Update Steel News
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # 每6小时运行一次
-  workflow_dispatch:        # 允许手动触发
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 添加写入权限
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}  # 确保有推送权限
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run update script
         run: python update_news.py
@@ -31,5 +33,9 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add steel_news_*.json steel_news.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update steel news JSON"
-          git push
+          if ! git diff --quiet --staged; then
+            git commit -m "Update steel news JSON"
+            git push
+          else
+            echo "No changes to commit"
+          fi
