@@ -10,8 +10,6 @@ from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import hashlib
-import time
-from ftplib import FTP
 
 # ================= 配置区域 =================
 KEYWORDS = [
@@ -39,11 +37,9 @@ TRANSLATE_TO = ['en', 'fr', 'de']       # 目标语言
 
 SIMILARITY_THRESHOLD = 0.5              # 去重阈值
 
-# FTP 配置（从环境变量读取，安全）
-FTP_HOST = os.environ.get('FTP_HOST')
-FTP_USER = os.environ.get('FTP_USER')
-FTP_PASS = os.environ.get('FTP_PASS')
-REMOTE_DIR = '/unionmetaladmin/wwwroot'  # 远程目录，例如 '/public_html/'
+# HTTP 上传配置（从环境变量读取）
+UPLOAD_URL = os.environ.get('UPLOAD_URL', '')
+UPLOAD_TOKEN = os.environ.get('UPLOAD_TOKEN', '')
 
 # ================= 核心功能 =================
 def fetch_rss_feeds():
@@ -188,23 +184,29 @@ def generate_html(news_list, lang='zh'):
     html_content = re.sub(r'<title>.*?</title>', f'<title>{title_text} - 巨红贸易</title>', html_content)
     return html_content
 
-def upload_to_ftp(local_path, remote_path):
-    """使用FTP上传文件"""
-    if not all([FTP_HOST, FTP_USER, FTP_PASS]):
-        print("FTP凭据未配置，跳过上传")
+def upload_via_http(local_path, remote_filename):
+    """通过 HTTP POST 上传文件内容到 PHP 脚本"""
+    if not UPLOAD_TOKEN or not UPLOAD_URL:
+        print("未设置 UPLOAD_TOKEN 或 UPLOAD_URL，跳过上传")
         return
     try:
-        ftp = FTP(FTP_HOST)
-        ftp.login(FTP_USER, FTP_PASS)
-        # 如果远程目录不是根，可以 cd 进去
-        if REMOTE_DIR != '/':
-            ftp.cwd(REMOTE_DIR)
-        with open(local_path, 'rb') as f:
-            ftp.storbinary(f'STOR {remote_path}', f)
-        ftp.quit()
-        print(f"已上传 {local_path} -> {remote_path}")
+        with open(local_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        payload = {
+            'filename': remote_filename,
+            'content': content
+        }
+        headers = {
+            'X-Upload-Token': UPLOAD_TOKEN,
+            'Content-Type': 'application/json'
+        }
+        response = requests.post(UPLOAD_URL, json=payload, headers=headers, timeout=30)
+        if response.status_code == 200:
+            print(f"已上传 {local_path} -> {remote_filename}")
+        else:
+            print(f"上传失败，HTTP {response.status_code}: {response.text}")
     except Exception as e:
-        print(f"FTP上传失败: {e}")
+        print(f"HTTP 上传异常: {e}")
 
 def main():
     print(f"{datetime.now()} - 开始抓取新闻...")
@@ -221,7 +223,7 @@ def main():
     with open(OUTPUT_FILES['zh'], 'w', encoding='utf-8') as f:
         f.write(zh_html)
     print(f"已生成中文版：{OUTPUT_FILES['zh']}")
-    upload_to_ftp(OUTPUT_FILES['zh'], OUTPUT_FILES['zh'])
+    upload_via_http(OUTPUT_FILES['zh'], OUTPUT_FILES['zh'])
     
     # 多语言
     if TRANSLATION_ENABLED:
@@ -232,7 +234,7 @@ def main():
             with open(OUTPUT_FILES[lang], 'w', encoding='utf-8') as f:
                 f.write(lang_html)
             print(f"已生成 {lang} 版：{OUTPUT_FILES[lang]}")
-            upload_to_ftp(OUTPUT_FILES[lang], OUTPUT_FILES[lang])
+            upload_via_http(OUTPUT_FILES[lang], OUTPUT_FILES[lang])
 
 if __name__ == '__main__':
     main()
