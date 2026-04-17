@@ -19,6 +19,9 @@ KEYWORDS = [
     '钢管', '无缝管', '彩涂卷', '镀锌卷', '热轧', '钢板'
 ]
 
+# 需要屏蔽的关键词（包含即丢弃）
+BLOCKED_KEYWORDS = ['钢铁森林']
+
 RSS_SOURCES = [
     # 请替换为国内可用的钢铁 RSS 源
     'https://news.google.com/rss/search?q=钢铁&hl=zh-CN&gl=CN&ceid=CN:zh-Hans',
@@ -66,6 +69,18 @@ def get_sort_key(news):
     """返回用于排序的 key，datetime 对象或原始字符串（作为后备）"""
     dt = parse_published(news.get('published', ''))
     return dt if dt else news.get('published', '')
+
+def filter_blocked_news(news_list):
+    """移除任何标题或内容中包含屏蔽关键词的新闻"""
+    filtered = []
+    for news in news_list:
+        title = news.get('title', '')
+        content = news.get('content', '')
+        text_to_check = (title + ' ' + content).lower()
+        # 如果任意屏蔽词出现在文本中，则跳过这条新闻
+        if not any(kw.lower() in text_to_check for kw in BLOCKED_KEYWORDS):
+            filtered.append(news)
+    return filtered
 
 # ================= 核心函数 =================
 def fetch_rss_feeds():
@@ -185,6 +200,11 @@ def main():
     existing_news = load_existing_news()
     merged_news = merge_news(existing_news, new_news)
     print(f"合并后共 {len(merged_news)} 条新闻")
+
+    # 屏蔽包含屏蔽关键词的新闻
+    merged_news = filter_blocked_news(merged_news)
+    print(f"屏蔽后剩余 {len(merged_news)} 条新闻")
+
     save_news(merged_news)
 
     # 生成中文 JSON
