@@ -1,5 +1,11 @@
 name: Update Steel News
 
+# 与仓库现有 workflow 相同，只多了最后一步：通知 jsDelivr 刷新缓存。
+# 站点是静态虚拟主机，页面只能从 CDN / GitHub 读取 JSON；jsDelivr 对
+# @main 分支默认缓存最长 12 小时，更新后 purge 一下可以让国内用户尽快看到新内容。
+#
+# 使用方法：用本文件覆盖 .github/workflows/update_news.yml 即可。
+
 on:
   schedule:
     - cron: '0 */6 * * *'
@@ -39,3 +45,16 @@ jobs:
           else
             echo "No changes to commit"
           fi
+
+      # 让 jsDelivr 立刻重新拉取新提交，避免国内用户看到最长 12 小时的旧数据。
+      # purge 失败不影响新闻本身，只影响 CDN 的刷新速度。
+      - name: Purge jsDelivr cache
+        run: |
+          # 给 GitHub → jsDelivr 的仓库同步留一点时间
+          sleep 20
+          for f in steel_news.json steel_news_zh.json steel_news_en.json steel_news_fr.json steel_news_de.json; do
+            echo "Purging $f ..."
+            curl -fsS "https://purge.jsdelivr.net/gh/metalfirst/steel-news-auto@main/$f" \
+              || echo "purge failed for $f (non-fatal)"
+            echo
+          done
